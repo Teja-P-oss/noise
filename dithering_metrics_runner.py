@@ -15,7 +15,7 @@ from dithering_algorithms import (
     BAYER_2X2,
     BAYER_4X4,
     LFSR,
-    create_input_imageient_image,
+    create_input_gradient_image,
     truncation_dither,
     ased_dither,
 )
@@ -78,7 +78,7 @@ def run_dithering_comparison(
     dist_lfsr = LFSR(lfsr_seed + 1, lfsr_taps)
 
     for is_rgb in [False]:  # grayscale only for now – mirror original
-        input_image = create_input_imageient_image(image_height, image_width, is_rgb=is_rgb)
+        input_image = create_input_gradient_image(image_height, image_width, is_rgb=is_rgb)
         img_type = "RGB" if is_rgb else "Grayscale"
         channels = 3 if is_rgb else 1
         print(f"\n=== {img_type} ({image_height}×{image_width}) - 10-bit input ===")

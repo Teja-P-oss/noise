@@ -31,7 +31,7 @@ BAYER_4X4 = np.array(
     [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]], dtype=np.int32
 )
 
-def create_input_imageient_image(height: int, width: int, *, is_rgb: bool = False) -> np.ndarray:
+def create_input_gradient_image(height: int, width: int, *, is_rgb: bool = False) -> np.ndarray:
     if is_rgb:
         img = np.zeros((height, width, 3), dtype=DTYPE_IMG)
         for y in range(height):
