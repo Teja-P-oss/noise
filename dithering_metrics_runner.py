@@ -1,0 +1,128 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from skimage.metrics import peak_signal_noise_ratio as psnr
+
+from dithering_algorithms import (
+    INPUT_BIT_DEPTH,
+    MAX_VAL,
+    DTYPE_IMG,
+    BAYER_2X2,
+    BAYER_4X4,
+    LFSR,
+    create_input_imageient_image,
+    truncation_dither,
+    ased_dither,
+)
+
+def analyze_patterns(img: np.ndarray) -> dict[str, int]:
+    data = img.astype(np.int64)
+    h, w = data.shape
+    res: dict[str, int] = {}
+    col_sums = data.sum(axis=0) if w else np.array([])
+    if col_sums.size:
+        mean = int(col_sums.mean())
+        res["vert_line_metric"] = int(np.sqrt(((col_sums - mean) ** 2).mean()))
+    else:
+        res["vert_line_metric"] = 0
+    row_sums = data.sum(axis=1) if h else np.array([])
+    if row_sums.size:
+        mean_r = int(row_sums.mean())
+        res["horiz_line_metric"] = int(np.sqrt(((row_sums - mean_r) ** 2).mean()))
+    else:
+        res["horiz_line_metric"] = 0
+    res["texture_col_diff_metric"] = int(np.abs(np.diff(col_sums)).mean()) if col_sums.size > 1 else 0
+    res["texture_row_diff_metric"] = int(np.abs(np.diff(row_sums)).mean()) if row_sums.size > 1 else 0
+    return res
+
+def run_dithering_comparison(
+    *,
+    image_height: int = 512,
+    image_width: int = 512,
+    reduction_bits_list: list[int] | None = None,
+) -> None:
+    reduction_bits_list = reduction_bits_list or [4]
+    lfsr_seed = 0xD3ADBEEF
+    lfsr_taps = (32, 22, 2, 1)
+    noise_lfsr = LFSR(lfsr_seed, lfsr_taps)
+    dist_lfsr = LFSR(lfsr_seed + 1, lfsr_taps)
+    rand_lfsr = LFSR(lfsr_seed + 2, lfsr_taps)
+
+    for is_rgb in [False]:
+        input_image = create_input_imageient_image(image_height, image_width, is_rgb=is_rgb)
+        img_type = "RGB" if is_rgb else "Grayscale"
+        channels = 3 if is_rgb else 1
+        print(f"\n=== {img_type} ({image_height}×{image_width}) - 10-bit input ===")
+        for rbits in reduction_bits_list:
+            out_bits = INPUT_BIT_DEPTH - rbits
+            print(f"\n-- Reduction: {rbits} bits  ⇒  {out_bits}-bit output --")
+            bayer = BAYER_2X2 if rbits == 2 else BAYER_4X4
+            algos = {
+                "Original": input_image,
+                "Trunc": None,
+                "ased K3 S0": None,
+                "ased K3 S1": None,
+            }
+            psnr_res: dict[str, float] = {}
+            patt_res: dict[str, dict[str, int]] = {}
+            for name in algos:
+                if name == "Original":
+                    continue
+                out_full = np.zeros_like(input_image, dtype=DTYPE_IMG)
+                for ch in range(channels):
+                    src = input_image[..., ch] if is_rgb else input_image
+                    if name == "Trunc":
+                        out = truncation_dither(src, rbits)
+                    elif name == "ased K3 S0":
+                        out = ased_dither(src, rbits, noise_lfsr, dist_lfsr, noise_strength=0)
+                    elif name == "ased K3 S1":
+                        out = ased_dither(src, rbits, noise_lfsr, dist_lfsr, noise_strength=1)
+                    if is_rgb:
+                        out_full[..., ch] = out
+                    else:
+                        out_full = out
+                algos[name] = out_full
+                if is_rgb:
+                    psnr_ch = [
+                        psnr(input_image[..., c], out_full[..., c], data_range=MAX_VAL)
+                        for c in range(3)
+                    ]
+                    psnr_res[name] = sum(psnr_ch) / 3
+                    patt_aggr = {k: 0 for k in analyze_patterns(out_full[..., 0])}
+                    for c in range(3):
+                        p = analyze_patterns(out_full[..., c])
+                        for k in patt_aggr:
+                            patt_aggr[k] += p[k]
+                    for k in patt_aggr:
+                        patt_aggr[k] //= 3
+                    patt_res[name] = patt_aggr
+                else:
+                    psnr_res[name] = psnr(input_image, out_full, data_range=MAX_VAL)
+                    patt_res[name] = analyze_patterns(out_full)
+                print(
+                    f"  {name:<10}  PSNR={psnr_res[name]:6.2f} dB  "
+                    f"V:{patt_res[name]['vert_line_metric']:<4} "
+                    f"H:{patt_res[name]['horiz_line_metric']:<4} "
+                )
+            n_alg = len(algos)
+            fig, axes = plt.subplots(2, n_alg, figsize=(n_alg * 3, 6))
+            fig.suptitle(
+                f"{img_type} – {out_bits}-bit output (10-bit src)", fontsize=14
+            )
+            zoom = 4
+            h_z, w_z = image_height // zoom, image_width // zoom
+            y0 = image_height // 2 - h_z // 2
+            x0 = image_width // 2 - w_z // 2
+            sl = (slice(y0, y0 + h_z), slice(x0, x0 + w_z))
+            for idx, (name, im) in enumerate(algos.items()):
+                axes[0, idx].imshow(im, cmap="gray" if not is_rgb else None, vmin=0, vmax=MAX_VAL)
+                axes[0, idx].set_title(name, fontsize=8)
+                axes[0, idx].axis("off")
+                zoom_im = im[sl] if channels == 1 else im[sl[0], sl[1], :]
+                axes[1, idx].imshow(zoom_im, cmap="gray" if not is_rgb else None, vmin=0, vmax=MAX_VAL, interpolation="nearest")
+                axes[1, idx].set_title("zoom×4", fontsize=8)
+                axes[1, idx].axis("off")
+            plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+            plt.show()
+
+if __name__ == "__main__":
+    run_dithering_comparison()
