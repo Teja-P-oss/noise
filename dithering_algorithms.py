@@ -70,10 +70,20 @@ def truncation_dither(img: np.ndarray, reduction_bits: int) -> np.ndarray:
     img_int &= mask
     return img_int.astype(DTYPE_IMG)
 
+# Blue noise texture (4x4) - carefully designed values
+BLUE_NOISE_4X4 = np.array([
+    [1, -1, 1, -1],
+    [-2, 2, -2, 2],
+    [1, -1, 1, -1],
+    [0, 0, 0, 0]
+], dtype=np.int32)
+
+# ... existing functions ...
+
 def ased_dither(
     img: np.ndarray,
     reduction_bits: int,
-    noise_lfsr: LFSR,
+    noise_lfsr: LFSR,  # Keep for interface compatibility
     dist_lfsr: LFSR,
     *,
     noise_strength: int = 1,
@@ -83,10 +93,6 @@ def ased_dither(
         return img.copy()
     h, w = img.shape
     out = np.zeros_like(img, dtype=DTYPE_IMG)
-
-    # Calculate adaptive noise strength (Q/4)
-    Q = (1 << reduction_bits)  # Quantization step size
-    effective_strength = noise_strength * Q // 4
 
     coeff_k2 = [(4, 0), (3, 1), (2, 2), (1, 3)]
     coeff_k3 = [(8, 0, 0), (4, 4, 0), (4, 2, 2), (2, 4, 2)]
@@ -102,26 +108,19 @@ def ased_dither(
         coeff_sets = coeff_k4
         denom_shift = 4
     else:
-        raise ValueError("lookahead_k must be 2, 3, or 4")
+        raise ValueError("lookahead_k must be 3 or 4")
 
     future_err = np.zeros(lookahead_k, dtype=np.int32)
 
     for y in range(h):
-        noise_lfsr.state ^= (y + 1)
-        dist_lfsr.state ^= (y + 1)
+        dist_lfsr.state ^= (y + 1)  # Only update distribution LFSR
         future_err.fill(0)
         for x in range(w):
             val = int(img[y, x]) + future_err[0]
-            # Improved noise injection with blue-noise characteristics
-            if effective_strength:
-                raw = noise_lfsr.get_random_bits(8)  # 0-255
-                # Blue-noise inspired mapping
-                noise = (raw * 2 + 1) - 511  # [-510, 510] symmetric
-                # Scale and shift to [-effective_strength, effective_strength]
-                added_noise = (noise * effective_strength + 255) // 510
-            else:
-                added_noise = 0
-
+            
+            # Use blue noise texture for noise injection
+            added_noise = BLUE_NOISE_4X4[y % 4, x % 4] * noise_strength
+            
             val_n = np.clip(val + added_noise, 0, MAX_VAL)
             q_val = quantize_value(val_n, reduction_bits)
             out[y, x] = q_val
