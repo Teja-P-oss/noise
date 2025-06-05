@@ -1,0 +1,1 @@
+for a 32-bit LFSR there are 4.29 billion non-repetitive states

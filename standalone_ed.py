@@ -131,7 +131,14 @@ def ased_dither(
     h, w = img.shape
     out = np.zeros_like(img, dtype=DTYPE_IMG)
 
-    # coefficient sets for k=3 and k=4 as before
+    # coefficient sets for k=2 to k=4 as before
+    coeff_k2 = [                       # sums to  4  → denom_shift = 2
+        (4, 0),
+        (3, 1),
+        (2, 2),
+        (1, 3),
+    ]
+
     coeff_k3 = [
         (8, 0, 0),
         (4, 4, 0),
@@ -144,7 +151,11 @@ def ased_dither(
         (8, 8, 0, 0),
         (4, 4, 4, 4),
     ]
-    if lookahead_k == 3:
+
+    if lookahead_k == 2:
+        coeff_sets = coeff_k2
+        denom_shift = 2
+    elif lookahead_k == 3:
         coeff_sets = coeff_k3
         denom_shift = 3
     elif lookahead_k == 4:
