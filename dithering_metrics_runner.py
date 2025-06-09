@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import imageio.v2 as iio
 from skimage.metrics import peak_signal_noise_ratio as psnr
+from typing import Dict, List, Optional, Union
 
 from dithering_algorithms import (
     INPUT_BIT_DEPTH,
@@ -60,8 +61,8 @@ def run_dithering_comparison(
     *,
     image_height: int = 512,
     image_width: int = 512,
-    reduction_bits_list: list[int] | None = None,
-    dump_dir: str | Path = "outputs_bmp",
+    reduction_bits_list: Optional[List[int]] = None,
+    dump_dir: Union[str, Path] = "outputs_bmp",
 ) -> None:
     """Run the dithering demo, now also printing MSE and saving BMPs."""
 

@@ -1,11 +1,12 @@
 import numpy as np
+from typing import Tuple
 
 INPUT_BIT_DEPTH: int = 10
 MAX_VAL: int = (1 << INPUT_BIT_DEPTH) - 1
 DTYPE_IMG = np.uint16
 
 class LFSR:
-    def __init__(self, seed: int, taps: tuple[int, ...]):
+    def __init__(self, seed: int, taps: Tuple[int, ...]):
         self.state = seed or 1
         self.taps = taps
         self.nbits = max(self.state.bit_length(), *(taps or (8,)))
