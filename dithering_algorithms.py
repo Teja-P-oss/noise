@@ -56,7 +56,7 @@ def quantize_value(value: int, reduction_bits: int) -> int:
         return np.clip(value, 0, MAX_VAL).astype(DTYPE_IMG)
     output_bits = INPUT_BIT_DEPTH - reduction_bits
     levels = 1 << output_bits
-    level_idx = (value * (levels - 1) * 2 + MAX_VAL) // (MAX_VAL * 2)
+    level_idx = value >> reduction_bits #(value * (levels - 1) * 2 + MAX_VAL) // (MAX_VAL * 2)
     level_idx = np.clip(level_idx, 0, levels - 1)
     quantized = (level_idx * MAX_VAL * 2 + (levels - 1)) // ((levels - 1) * 2)
     return int(quantized)
