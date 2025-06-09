@@ -52,11 +52,6 @@ def mse(a: np.ndarray, b: np.ndarray) -> float:
     diff = a.astype(np.float32) - b.astype(np.float32)
     return float(np.mean(diff * diff))
 
-
-# -----------------------------------------------------------------------------
-# Main comparison routine (adds MSE + BMP export)
-# -----------------------------------------------------------------------------
-
 def run_dithering_comparison(
     *,
     image_height: int = 512,
@@ -64,15 +59,11 @@ def run_dithering_comparison(
     reduction_bits_list: Optional[List[int]] = None,
     dump_dir: Union[str, Path] = "outputs_bmp",
 ) -> None:
-    """Run the dithering demo, now also printing MSE and saving BMPs."""
 
     reduction_bits_list = reduction_bits_list or [4]
     dump_dir = Path(dump_dir)
     dump_dir.mkdir(parents=True, exist_ok=True)
 
-    # -----------------------------------------------------------
-    # LFSRs (unchanged)
-    # -----------------------------------------------------------
     lfsr_seed = 0xD3ADBEEF
     lfsr_taps = (32, 22, 2, 1)
     noise_lfsr = LFSR(lfsr_seed, lfsr_taps)
@@ -183,10 +174,6 @@ def _write_bmp(path: Path, img: np.ndarray) -> None:
     iio.imwrite(path, img8, format="bmp")
 
 
-# -----------------------------------------------------------------------------
-# Helper: unchanged visual plot (factorised for clarity)
-# -----------------------------------------------------------------------------
-
 def _show_comparison_fig(algos: Dict[str, np.ndarray], img_type: str, h: int, w: int, vmax: int) -> None:
     n_alg = len(algos)
     fig, axes = plt.subplots(2, n_alg, figsize=(n_alg * 3, 6))
@@ -213,10 +200,6 @@ def _show_comparison_fig(algos: Dict[str, np.ndarray], img_type: str, h: int, w:
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.show()
 
-
-# -----------------------------------------------------------------------------
-# CLI entry point
-# -----------------------------------------------------------------------------
 
 if __name__ == "__main__":
     run_dithering_comparison()
