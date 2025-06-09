@@ -188,12 +188,14 @@ def _show_comparison_fig(algos: Dict[str, np.ndarray], img_type: str, h: int, w:
     cmap = None if is_rgb else "gray"
 
     for idx, (name, im) in enumerate(algos.items()):
-        axes[0, idx].imshow(im, cmap=cmap, vmin=0, vmax=vmax)
+        display_im = im.astype(np.float32) / vmax
+
+        axes[0, idx].imshow(display_im, cmap=cmap, vmin=0, vmax=1.0)
         axes[0, idx].set_title(name, fontsize=8)
         axes[0, idx].axis("off")
 
-        zoom_im = im[sl] if not is_rgb else im[sl[0], sl[1], :]
-        axes[1, idx].imshow(zoom_im, cmap=cmap, vmin=0, vmax=vmax, interpolation="nearest")
+        zoom_im = display_im[sl] if not is_rgb else display_im[sl[0], sl[1], :]
+        axes[1, idx].imshow(zoom_im, cmap=cmap, vmin=0, vmax=1.0, interpolation="nearest")
         axes[1, idx].set_title("zoom×4", fontsize=8)
         axes[1, idx].axis("off")
 
