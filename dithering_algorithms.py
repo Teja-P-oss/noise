@@ -51,10 +51,10 @@ def quantize_value(value: int, reduction_bits: int) -> int:
         return np.clip(value, 0, MAX_VAL).astype(DTYPE_IMG)
     output_bits = INPUT_BIT_DEPTH - reduction_bits
     levels = 1 << output_bits
-    #level_idx = value >> reduction_bits #(value * (levels - 1) * 2 + MAX_VAL) // (MAX_VAL * 2)
-    level_idx = (value * (levels - 1) * 2 + MAX_VAL) // (MAX_VAL * 2)
+    level_idx = value >> reduction_bits #(value * (levels - 1) * 2 + MAX_VAL) // (MAX_VAL * 2)
+    #level_idx = (value * (levels - 1) * 2 + MAX_VAL) // (MAX_VAL * 2)
     level_idx = np.clip(level_idx, 0, levels - 1)
-    quantized = (level_idx * MAX_VAL * 2 + (levels - 1)) // ((levels - 1) * 2)
+    quantized = level_idx << reduction_bits #(level_idx * MAX_VAL * 2 + (levels - 1)) // ((levels - 1) * 2)
     return int(quantized)
 
 def truncation_dither(img: np.ndarray, reduction_bits: int) -> np.ndarray:
@@ -66,6 +66,47 @@ def truncation_dither(img: np.ndarray, reduction_bits: int) -> np.ndarray:
     mask = (~((1 << reduction_bits) - 1)) & ((1 << INPUT_BIT_DEPTH) - 1)
     img_int &= mask
     return img_int.astype(DTYPE_IMG)
+
+_random_lfsr = LFSR(seed=0xAB67BCEF, taps=(16, 14, 13, 11))
+
+def random_dither(img, reduction_bits):
+    if reduction_bits == 0:
+        return img.copy()
+    mask = (1 << reduction_bits) - 1
+    h, w = img.shape
+    out = np.empty_like(img, dtype=DTYPE_IMG)
+    for y in range(h):
+        _random_lfsr.state ^= ((y + 1) << 8) | (y >> 8)
+        for x in range(w):
+            noise = _random_lfsr.get_random_bits(16) & mask
+            q = ((int(img[y, x]) + noise) >> reduction_bits) << reduction_bits
+            out[y, x] = DTYPE_IMG(min(q, MAX_VAL))
+    return out
+
+
+_B2 = np.array([[0, 2],
+                [3, 1]], dtype=np.uint8)
+
+_B4 = np.array([[0, 8, 2, 10],
+                [12, 4, 14, 6],
+                [3, 11, 1, 9],
+                [15, 7, 13, 5]], dtype=np.uint8)
+
+def ordered_dither(img, reduction_bits, matrix_size=4):
+    if reduction_bits == 0:
+        return img.copy()
+    mat = _B2 if matrix_size == 2 else _B4
+    n = matrix_size
+    scale = (1 << reduction_bits) / (n * n)
+    h, w = img.shape
+    out = np.empty_like(img, dtype=DTYPE_IMG)
+    for y in range(h):
+        for x in range(w):
+            threshold = int(mat[y % n, x % n] * scale)
+            q = ((int(img[y, x]) + threshold) >> reduction_bits) << reduction_bits
+            out[y, x] = DTYPE_IMG(min(q, MAX_VAL))
+    return out
+
 
 def srled_dither(
     img: np.ndarray,

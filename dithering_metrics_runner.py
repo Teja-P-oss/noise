@@ -15,8 +15,10 @@ from dithering_algorithms import (
     DTYPE_IMG,
     LFSR,
     create_input_gradient_image,
-    truncation_dither,
     srled_dither,
+    truncation_dither,
+    random_dither,
+    ordered_dither
 )
 
 # -----------------------------------------------------------------------------
@@ -85,8 +87,10 @@ def run_dithering_comparison(
             algos: Dict[str, np.ndarray | None] = {
                 "Original": input_image,
                 "Trunc": None,
+                "Ordered": None,
+                "Random": None,
                 "srled K3 S0": None,
-                "srled K3 S1": None,
+                #"srled K3 S1": None,
             }
             psnr_res: Dict[str, float] = {}
             mse_res: Dict[str, float] = {}
@@ -110,6 +114,10 @@ def run_dithering_comparison(
                         out = srled_dither(src, rbits, noise_lfsr, dist_lfsr, noise_strength=0)
                     elif name == "srled K3 S1":
                         out = srled_dither(src, rbits, noise_lfsr, dist_lfsr, noise_strength=1)
+                    elif name == "Ordered":
+                        out = ordered_dither(src, rbits)
+                    elif name == "Random":
+                        out = random_dither(src, rbits)
                     else:
                         raise RuntimeError("Unknown algorithm label – keep list in sync")
 
