@@ -61,7 +61,7 @@ def run_dithering_comparison(
     dump_dir: Union[str, Path] = "outputs_bmp",
 ) -> None:
 
-    reduction_bits_list = reduction_bits_list or [2, 4, 6]
+    reduction_bits_list = reduction_bits_list or [2,4]
     dump_dir = Path(dump_dir)
     dump_dir.mkdir(parents=True, exist_ok=True)
 
@@ -71,7 +71,7 @@ def run_dithering_comparison(
     dist_lfsr = LFSR(lfsr_seed + 1, lfsr_taps)
 
     for is_rgb in [True]:  # grayscale only for now – mirror original
-        input_image = create_input_gradient_image(image_height, image_width, is_rgb=is_rgb)
+        input_image, image_width, image_height = create_input_gradient_image(image_height, image_width, is_rgb=is_rgb)
         img_type = "RGB" if is_rgb else "Grayscale"
         channels = 3 if is_rgb else 1
         print(f"\n=== {img_type} ({image_height}×{image_width}) - 10-bit input ===")

@@ -1,7 +1,8 @@
 import numpy as np
 from typing import Tuple
+import cv2
 
-INPUT_BIT_DEPTH: int = 10
+INPUT_BIT_DEPTH: int = 8
 MAX_VAL: int = (1 << INPUT_BIT_DEPTH) - 1
 DTYPE_IMG = np.uint16
 
@@ -30,19 +31,26 @@ class LFSR:
 def create_input_gradient_image(height: int, width: int, *, is_rgb: bool = False) -> np.ndarray:
     if is_rgb:
         img = np.zeros((height, width, 3), dtype=DTYPE_IMG)
-        for y in range(height):
-            for x in range(width):
-                img[y, x, 0] = (x * MAX_VAL) // (width - 1) if width > 1 else 0
-                img[y, x, 1] = (y * MAX_VAL) // (height - 1) if height > 1 else 0
-                diag_den = width + height - 2
-                img[y, x, 2] = ((x + y) * MAX_VAL) // diag_den if diag_den else 0
+        
+        if INPUT_BIT_DEPTH == 8:
+            img = cv2.imread("baboon.png")
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            width, height = img.shape[1], img.shape[0]
+        else:
+            for y in range(height):
+                for x in range(width):
+                    img[y, x, 0] = (x * MAX_VAL) // (width - 1) if width > 1 else 0
+                    img[y, x, 1] = (y * MAX_VAL) // (height - 1) if height > 1 else 0
+                    diag_den = width + height - 2
+                    img[y, x, 2] = ((x + y) * MAX_VAL) // diag_den if diag_den else 0
     else:
         img = np.zeros((height, width), dtype=DTYPE_IMG)
         for y in range(height):
             line_val = (y * 0)
             for x in range(width):
                 img[y, x] = (x * MAX_VAL) // (width - 1) if width > 1 else 0
-    return img
+
+    return img, width, height
 
 def quantize_value(value: int, reduction_bits: int) -> int:
     if not (0 <= reduction_bits <= INPUT_BIT_DEPTH):
@@ -105,17 +113,25 @@ _B4 = np.array([[0, 8, 2, 10],
 def ordered_dither(img, reduction_bits, matrix_size=4):
     if reduction_bits == 0:
         return img.copy()
+
     mat = _B2 if matrix_size == 2 else _B4
-    n = matrix_size
-    scale = (1 << reduction_bits) / (n * n)
+    shift = 2 if matrix_size == 2 else 4        # log2(n²)
     h, w = img.shape
     out = np.empty_like(img, dtype=DTYPE_IMG)
+
     for y in range(h):
         for x in range(w):
-            threshold = int(mat[y % n, x % n] * scale)
-            q = ((int(img[y, x]) + threshold) >> reduction_bits) << reduction_bits
-            out[y, x] = DTYPE_IMG(min(q, MAX_VAL))
+            base = int(mat[y & (matrix_size - 1), x & (matrix_size - 1)])
+            threshold = (base << reduction_bits) >> shift        # still pure shifts
+            pix = int(img[y, x]) + threshold                     # both Python ints → no wrap
+            q = (pix >> reduction_bits) << reduction_bits
+            if q > MAX_VAL:                                      # rare 1024 case
+                q = MAX_VAL
+            out[y, x] = DTYPE_IMG(q)
+
     return out
+
+
 
 
 def srled_dither(
@@ -133,7 +149,7 @@ def srled_dither(
     out = np.zeros_like(img, dtype=DTYPE_IMG)
 
     coeff_k2 = [(4, 0), (3, 1), (2, 2), (1, 3)]
-    coeff_k3 = [(8, 0, 0), (4, 4, 0), (4, 2, 2), (2, 4, 2)]
+    coeff_k3 = [(4, 3, 1), (4, 4, 0), (4, 2, 2), (2, 4, 2)]
     coeff_k4 = [(16, 0, 0, 0), (8, 4, 2, 2), (8, 8, 0, 0), (4, 4, 4, 4)]
 
     if lookahead_k == 2:
