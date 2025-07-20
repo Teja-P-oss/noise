@@ -61,7 +61,7 @@ def quantize_value(value: int, reduction_bits: int) -> int:
     quantized = (level_idx * MAX_VAL * 2 + (levels - 1)) // ((levels - 1) * 2)
     return int(quantized)
 
-def truncation_dither(img: np.ndarray, reduction_bits: int) -> np.ndarray:
+def rounding(img: np.ndarray, reduction_bits: int) -> np.ndarray:
     if reduction_bits == 0:
         return img.copy()
     img_int = img.astype(np.int32)
@@ -69,6 +69,16 @@ def truncation_dither(img: np.ndarray, reduction_bits: int) -> np.ndarray:
     img_int = np.clip(img_int + rounding_offset, 0, MAX_VAL)
     mask = (~((1 << reduction_bits) - 1)) & ((1 << INPUT_BIT_DEPTH) - 1)
     img_int &= mask
+    return img_int.astype(DTYPE_IMG)
+
+def truncate(img: np.ndarray, reduction_bits: int) -> np.ndarray:
+    if reduction_bits == 0:
+        return img.copy()
+    img_int = img.astype(np.int32)
+    img_int = np.clip(img_int, 0, MAX_VAL)
+    img_int = img_int >> reduction_bits
+    img_int = img_int << reduction_bits
+    img_int = np.clip(img_int, 0, MAX_VAL)
     return img_int.astype(DTYPE_IMG)
 
 def ased_dither(

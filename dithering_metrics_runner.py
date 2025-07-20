@@ -17,7 +17,8 @@ from dithering_algorithms import (
     BAYER_4X4,
     LFSR,
     create_input_gradient_image,
-    truncation_dither,
+    truncate,
+    rounding,
     ased_dither,
 )
 
@@ -107,7 +108,9 @@ def run_dithering_comparison(
                 for ch in range(channels):
                     src = input_image[..., ch] if is_rgb else input_image
                     if name == "Trunc":
-                        out = truncation_dither(src, rbits)
+                        out = truncate(src, rbits)
+                    elif name == "Rounding":
+                        out = rounding(src, rbits)
                     elif name == "ased K3 S0":
                         out = ased_dither(src, rbits, noise_lfsr, dist_lfsr, noise_strength=0)
                     elif name == "ased K3 S1":
