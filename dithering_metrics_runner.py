@@ -16,9 +16,10 @@ from dithering_algorithms import (
     LFSR,
     create_input_gradient_image,
     srled_dither,
-    truncation_dither,
     random_dither,
-    ordered_dither
+    ordered_dither,
+    truncate,
+    rounding
 )
 
 # -----------------------------------------------------------------------------
@@ -87,6 +88,7 @@ def run_dithering_comparison(
             algos: Dict[str, np.ndarray | None] = {
                 "Original": input_image,
                 "Trunc": None,
+                #"Rounding": None,
                 "Ordered": None,
                 "Random": None,
                 "srled K3 S0": None,
@@ -109,7 +111,7 @@ def run_dithering_comparison(
                 for ch in range(channels):
                     src = input_image[..., ch] if is_rgb else input_image
                     if name == "Trunc":
-                        out = truncation_dither(src, rbits)
+                        out = truncate(src, rbits)
                     elif name == "srled K3 S0":
                         out = srled_dither(src, rbits, noise_lfsr, dist_lfsr, noise_strength=0)
                     elif name == "srled K3 S1":
