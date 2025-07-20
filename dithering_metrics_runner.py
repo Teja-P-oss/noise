@@ -153,8 +153,8 @@ def run_dithering_comparison(
                 print(
                     f"  {name:<10}  PSNR={psnr_res[name]:6.2f} dB  "
                     f"MSE={mse_res[name]:8.2f}  "
-                    f"V:{patt_res[name]['vert_line_metric']:<4} "
-                    f"H:{patt_res[name]['horiz_line_metric']:<4} "
+                    #f"V:{patt_res[name]['vert_line_metric']:<4} "
+                    #f"H:{patt_res[name]['horiz_line_metric']:<4} "
                 )
 
                 # -------------- dump BMP (including 16‑bit → 8‑bit scale)

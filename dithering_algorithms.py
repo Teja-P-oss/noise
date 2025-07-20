@@ -2,7 +2,7 @@ import numpy as np
 from typing import Tuple
 import cv2
 
-INPUT_BIT_DEPTH: int = 8
+INPUT_BIT_DEPTH: int = 10
 MAX_VAL: int = (1 << INPUT_BIT_DEPTH) - 1
 DTYPE_IMG = np.uint16
 
