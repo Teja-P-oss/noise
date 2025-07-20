@@ -13,12 +13,10 @@ from dithering_algorithms import (
     INPUT_BIT_DEPTH,
     MAX_VAL,
     DTYPE_IMG,
-    BAYER_2X2,
-    BAYER_4X4,
     LFSR,
     create_input_gradient_image,
     truncation_dither,
-    ased_dither,
+    srled_dither,
 )
 
 # -----------------------------------------------------------------------------
@@ -60,7 +58,7 @@ def run_dithering_comparison(
     dump_dir: Union[str, Path] = "outputs_bmp",
 ) -> None:
 
-    reduction_bits_list = reduction_bits_list or [4]
+    reduction_bits_list = reduction_bits_list or [2, 4, 6]
     dump_dir = Path(dump_dir)
     dump_dir.mkdir(parents=True, exist_ok=True)
 
@@ -69,7 +67,7 @@ def run_dithering_comparison(
     noise_lfsr = LFSR(lfsr_seed, lfsr_taps)
     dist_lfsr = LFSR(lfsr_seed + 1, lfsr_taps)
 
-    for is_rgb in [False]:  # grayscale only for now – mirror original
+    for is_rgb in [True]:  # grayscale only for now – mirror original
         input_image = create_input_gradient_image(image_height, image_width, is_rgb=is_rgb)
         img_type = "RGB" if is_rgb else "Grayscale"
         channels = 3 if is_rgb else 1
@@ -87,8 +85,8 @@ def run_dithering_comparison(
             algos: Dict[str, np.ndarray | None] = {
                 "Original": input_image,
                 "Trunc": None,
-                "ased K3 S0": None,
-                "ased K3 S1": None,
+                "srled K3 S0": None,
+                "srled K3 S1": None,
             }
             psnr_res: Dict[str, float] = {}
             mse_res: Dict[str, float] = {}
@@ -108,10 +106,10 @@ def run_dithering_comparison(
                     src = input_image[..., ch] if is_rgb else input_image
                     if name == "Trunc":
                         out = truncation_dither(src, rbits)
-                    elif name == "ased K3 S0":
-                        out = ased_dither(src, rbits, noise_lfsr, dist_lfsr, noise_strength=0)
-                    elif name == "ased K3 S1":
-                        out = ased_dither(src, rbits, noise_lfsr, dist_lfsr, noise_strength=1)
+                    elif name == "srled K3 S0":
+                        out = srled_dither(src, rbits, noise_lfsr, dist_lfsr, noise_strength=0)
+                    elif name == "srled K3 S1":
+                        out = srled_dither(src, rbits, noise_lfsr, dist_lfsr, noise_strength=1)
                     else:
                         raise RuntimeError("Unknown algorithm label – keep list in sync")
 

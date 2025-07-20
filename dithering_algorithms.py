@@ -27,11 +27,6 @@ class LFSR:
     def get_random_bits(self, n: int) -> int:
         return self.step() & ((1 << n) - 1)
 
-BAYER_2X2 = np.array([[0, 2], [3, 1]], dtype=np.int32)
-BAYER_4X4 = np.array(
-    [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]], dtype=np.int32
-)
-
 def create_input_gradient_image(height: int, width: int, *, is_rgb: bool = False) -> np.ndarray:
     if is_rgb:
         img = np.zeros((height, width, 3), dtype=DTYPE_IMG)
@@ -56,7 +51,8 @@ def quantize_value(value: int, reduction_bits: int) -> int:
         return np.clip(value, 0, MAX_VAL).astype(DTYPE_IMG)
     output_bits = INPUT_BIT_DEPTH - reduction_bits
     levels = 1 << output_bits
-    level_idx = value >> reduction_bits #(value * (levels - 1) * 2 + MAX_VAL) // (MAX_VAL * 2)
+    #level_idx = value >> reduction_bits #(value * (levels - 1) * 2 + MAX_VAL) // (MAX_VAL * 2)
+    level_idx = (value * (levels - 1) * 2 + MAX_VAL) // (MAX_VAL * 2)
     level_idx = np.clip(level_idx, 0, levels - 1)
     quantized = (level_idx * MAX_VAL * 2 + (levels - 1)) // ((levels - 1) * 2)
     return int(quantized)
@@ -71,7 +67,7 @@ def truncation_dither(img: np.ndarray, reduction_bits: int) -> np.ndarray:
     img_int &= mask
     return img_int.astype(DTYPE_IMG)
 
-def ased_dither(
+def srled_dither(
     img: np.ndarray,
     reduction_bits: int,
     noise_lfsr: LFSR,
